@@ -1,0 +1,88 @@
+.plan-preview-shell {
+  min-height: 100vh;
+  background: #eef2ff;
+}
+
+.plan-preview-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: rgba(15, 23, 42, 0.92);
+  color: white;
+  backdrop-filter: blur(12px);
+}
+
+.plan-preview-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 999px;
+  background: transparent;
+  color: white;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+}
+
+.plan-preview-copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.plan-preview-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  font-size: 0.75rem;
+  margin-bottom: 0.45rem;
+}
+
+.plan-preview-copy h1 {
+  font-size: 1.15rem;
+  margin-bottom: 0.25rem;
+}
+
+.plan-preview-copy p {
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 0.88rem;
+}
+
+.plan-preview-tabs {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.plan-preview-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.08);
+  color: white;
+  border-radius: 999px;
+  padding: 0.55rem 0.85rem;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.plan-preview-tabs button.active {
+  background: white;
+  color: #0f172a;
+}
+
+@media (max-width: 900px) {
+  .plan-preview-toolbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

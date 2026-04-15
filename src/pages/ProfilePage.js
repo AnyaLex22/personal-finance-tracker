@@ -1,11 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase';
 import {
-  User, Mail, Phone, Calendar, Lock, Eye, EyeOff, Camera,
-  Save, LogOut, RefreshCw, Shield, CheckCircle, X
+  User, Mail, Phone, Calendar, Lock, Eye, Camera,
+  Save, LogOut, RefreshCw, Shield, CheckCircle, X, Crown, CreditCard, ArrowLeft
 } from 'lucide-react';
 import './ProfilePage.css';
 
@@ -32,6 +32,7 @@ export default function ProfilePage() {
   const [pinError, setPinError]           = useState('');
   const [revealedPw, setRevealedPw]       = useState('');
   const [showRevealedPw, setShowRevealedPw] = useState(false);
+  const [emailLinkSent, setEmailLinkSent] = useState(false);
 
   // Set / change PIN
   const [showSetPin, setShowSetPin]   = useState(false);
@@ -68,7 +69,7 @@ export default function ProfilePage() {
     const savedPin = userProfile?.pin;
     if (!savedPin) { setPinError('No PIN set. Set a PIN first.'); return; }
     if (pinInput !== savedPin) { setPinError('Incorrect PIN.'); return; }
-    setRevealedPw('Your password is hidden for security. Use Reset Password to change it.');
+    setRevealedPw('Your account ownership was verified. For security, Firebase does not expose the current password in plain text. Use the email link or reset password to continue securely.');
     setShowRevealedPw(true);
     setShowPinModal(false);
     setPinInput('');
@@ -93,6 +94,12 @@ export default function ProfilePage() {
     alert(`A password reset link has been sent to ${currentUser.email}`);
   };
 
+  const handleSendSecureEmailLink = async () => {
+    await forgotPassword(currentUser.email);
+    setEmailLinkSent(true);
+    setTimeout(() => setEmailLinkSent(false), 4000);
+  };
+
   const trialDays = getTrialDaysLeft();
   const premium   = isPremium();
 
@@ -110,6 +117,9 @@ export default function ProfilePage() {
       </div>
 
       <div className="profile-container">
+        <button className="profile-back-btn" onClick={() => navigate('/')}>
+          <ArrowLeft size={16} /> Back to Dashboard
+        </button>
         <h2 className="profile-heading">My Profile</h2>
 
         {/* Avatar */}
@@ -126,14 +136,30 @@ export default function ProfilePage() {
           <div className="avatar-info">
             <p className="avatar-name">{form.displayName || form.username || 'User'}</p>
             <p className="avatar-email">{currentUser?.email}</p>
+            <div className="avatar-plan-row">
+              <span className={`plan-chip ${premium ? 'premium' : 'free'}`}>
+                {premium ? (userProfile?.plan === 'trial' ? `Premium Trial • ${trialDays} days left` : 'Premium Member') : 'Free Plan'}
+              </span>
+              {!premium && (
+                <button className="avatar-upgrade-btn" onClick={() => navigate('/upgrade')}>
+                  <Crown size={14} /> Upgrade
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
         {/* Form */}
         <div className="profile-form">
+          <div className="profile-form-head">
+            <div>
+              <h3>Profile Details</h3>
+              <p>Keep your account details up to date for secure recovery and billing later.</p>
+            </div>
+          </div>
           <div className="profile-grid">
             <div className="profile-field">
-              <label><User size={14} /> Display Name</label>
+              <label><User size={14} /> Name</label>
               <input value={form.displayName} onChange={set('displayName')} placeholder="Your full name" />
             </div>
             <div className="profile-field">
@@ -162,6 +188,10 @@ export default function ProfilePage() {
         {/* Security Section */}
         <div className="profile-section">
           <h3 className="section-title"><Lock size={16} /> Security</h3>
+          <p className="section-subcopy">
+            Passwords are protected by Firebase Authentication, so the current password cannot be displayed in plain text.
+            We can still verify account ownership with your 6-digit code or send a secure recovery link to your email.
+          </p>
 
           <div className="security-row">
             <div>
@@ -176,7 +206,10 @@ export default function ProfilePage() {
             </div>
             <div className="security-btns">
               <button className="btn-outline" onClick={() => setShowPinModal(true)}>
-                <Eye size={14} /> View (PIN)
+                <Eye size={14} /> Verify with 6-digit code
+              </button>
+              <button className="btn-outline" onClick={handleSendSecureEmailLink}>
+                <Mail size={14} /> Email secure link
               </button>
               <button className="btn-outline" onClick={handleResetPassword}>
                 <RefreshCw size={14} /> Reset Password
@@ -184,13 +217,39 @@ export default function ProfilePage() {
             </div>
           </div>
 
+          {emailLinkSent && (
+            <div className="security-info-banner">
+              <Mail size={14} />
+              <span>We sent a secure recovery link to {currentUser.email}.</span>
+            </div>
+          )}
+
           <div className="security-row">
             <div>
-              <p className="security-label">6-Digit Security PIN</p>
-              <p className="security-hint">{userProfile?.pin ? 'PIN is set' : 'No PIN configured'}</p>
+              <p className="security-label">6-Digit Verification Code</p>
+              <p className="security-hint">{userProfile?.pin ? 'Verification code is set' : 'No verification code configured yet'}</p>
             </div>
             <button className="btn-outline" onClick={() => setShowSetPin(true)}>
-              <Shield size={14} /> {userProfile?.pin ? 'Change PIN' : 'Set PIN'}
+              <Shield size={14} /> {userProfile?.pin ? 'Change Code' : 'Set Code'}
+            </button>
+          </div>
+        </div>
+
+        <div className="profile-section">
+          <h3 className="section-title"><CreditCard size={16} /> Plan & Billing</h3>
+          <div className="security-row">
+            <div>
+              <p className="security-label">{premium ? 'Premium Access' : 'Free Access'}</p>
+              <p className="security-hint">
+                {premium
+                  ? userProfile?.plan === 'trial'
+                    ? `Trial active. ${trialDays} day${trialDays !== 1 ? 's' : ''} left before billing begins.`
+                    : 'Premium tools and multi-device sync are active.'
+                  : 'Upgrade to RM 25/month for AI advisor, analytics, personalised tips, and device sync.'}
+              </p>
+            </div>
+            <button className="btn-outline" onClick={() => navigate('/upgrade')}>
+              <Crown size={14} /> {premium ? 'Manage Plan' : 'View Plans'}
             </button>
           </div>
         </div>
@@ -206,7 +265,7 @@ export default function ProfilePage() {
         <div className="modal-overlay" onClick={() => { setShowPinModal(false); setPinInput(''); setPinError(''); }}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
             <h3>Enter your 6-digit PIN</h3>
-            <p className="modal-sub">Verify your identity to view password info</p>
+            <p className="modal-sub">Verify your identity to unlock secure account access details</p>
             <input
               type="password" maxLength={6} value={pinInput}
               onChange={e => setPinInput(e.target.value.replace(/\D/g, ''))}
@@ -225,8 +284,8 @@ export default function ProfilePage() {
       {showSetPin && (
         <div className="modal-overlay" onClick={() => setShowSetPin(false)}>
           <div className="modal-card" onClick={e => e.stopPropagation()}>
-            <h3>{userProfile?.pin ? 'Change' : 'Set'} Security PIN</h3>
-            <p className="modal-sub">This 6-digit PIN protects your password view</p>
+            <h3>{userProfile?.pin ? 'Change' : 'Set'} Verification Code</h3>
+            <p className="modal-sub">This 6-digit code adds an extra account ownership check before sensitive actions.</p>
             <input
               type="password" maxLength={6} value={newPin}
               onChange={e => setNewPin(e.target.value.replace(/\D/g, ''))}

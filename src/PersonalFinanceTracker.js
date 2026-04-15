@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   PlusCircle, TrendingUp, Target, Download, DollarSign, PieChart,
@@ -46,13 +46,22 @@ function MiniChart({ data, color }) {
 }
 
 // ── Main Component ─────────────────────────────────────────────────────────
-function PersonalFinanceTracker() {
+function PersonalFinanceTracker({ planPreview = null }) {
   const navigate = useNavigate();
   const { userProfile, isPremium, getTrialDaysLeft } = useAuth();
   const { transactions, budgets, goals, addTransaction, addBudget, addGoal, contributeToGoal } = useFinance();
 
-  const premium = isPremium();
-  const trialDays = getTrialDaysLeft();
+  const effectivePlan = planPreview?.plan || userProfile?.plan || 'free';
+  const premium = planPreview ? effectivePlan === 'premium' || effectivePlan === 'trial' : isPremium();
+  const trialDays = planPreview?.trialDays ?? getTrialDaysLeft();
+  const isTrialPlan = effectivePlan === 'trial';
+  const premiumFeatureList = [
+    'AI financial advisor',
+    'Advanced analytics and spending trends',
+    'Spending insights and smart alerts',
+    'Personalised tips and budget planner',
+    'Multi-device sync and premium support'
+  ];
 
   const [activeTab, setActiveTab]   = useState('dashboard');
   const [budgetPeriod, setBudgetPeriod] = useState(getCurrentPeriod());
@@ -87,6 +96,9 @@ function PersonalFinanceTracker() {
     amount: '', description: '',
     date: new Date().toISOString().split('T')[0]
   });
+  const [incomeFormError, setIncomeFormError] = useState('');
+  const [isSubmittingIncome, setIsSubmittingIncome] = useState(false);
+  const [incomeSyncStatus, setIncomeSyncStatus] = useState(null);
   const [newBudget, setNewBudget] = useState({
     category: 'Food', customCategory: '', amount: ''
   });
@@ -96,7 +108,8 @@ function PersonalFinanceTracker() {
   // ── Derived data ───────────────────────────────────────────────────────
   const totalIncome   = transactions.filter(t => t.type === 'income').reduce((s, t) => s + t.amount, 0);
   const totalExpenses = transactions.filter(t => t.type === 'expense').reduce((s, t) => s + t.amount, 0);
-  const balance       = totalIncome - totalExpenses;
+  const totalSavings  = transactions.filter(t => t.type === 'saving').reduce((s, t) => s + t.amount, 0);
+  const balance       = totalIncome - totalExpenses - totalSavings;
 
   const filteredTransactions = transactions.filter(t => {
     const catMatch  = filterCategory === 'all' || t.category === filterCategory;
@@ -121,6 +134,16 @@ function PersonalFinanceTracker() {
   const incomeMonthly  = getMonthlyData('income');
   const expenseMonthly = getMonthlyData('expense');
   const balanceMonthly = getMonthlyData('balance');
+
+  const getTransactionTone = (type) => {
+    if (type === 'income') return 'positive';
+    if (type === 'saving') return 'saving';
+    return 'negative';
+  };
+
+  const getTransactionPrefix = (type) => (type === 'income' ? '+' : '-');
+  const handleOpenProfile = () => navigate('/profile');
+  const handleOpenUpgrade = () => navigate('/upgrade');
 
   // Budget spending scoped to current budget period (monthly reset)
   const calculateBudgetSpent = (category) =>
@@ -159,10 +182,17 @@ function PersonalFinanceTracker() {
     return acc;
   }, {});
 
+  useEffect(() => {
+    if (!incomeSyncStatus || incomeSyncStatus.type === 'syncing') return undefined;
+
+    const timer = setTimeout(() => setIncomeSyncStatus(null), 4000);
+    return () => clearTimeout(timer);
+  }, [incomeSyncStatus]);
+
   // ── Export ─────────────────────────────────────────────────────────────
   const exportPayload = {
     exportedAt: new Date().toISOString(),
-    summary: { totalIncome, totalExpenses, balance, expensesByCategory },
+    summary: { totalIncome, totalExpenses, totalSavings, balance, expensesByCategory },
     transactions,
     budgets: updatedBudgets,
     goals,
@@ -185,57 +215,87 @@ function PersonalFinanceTracker() {
   };
 
   // ── Handlers ───────────────────────────────────────────────────────────
-  const handleAddExpense = () => {
+  const handleAddExpense = async () => {
     if (!newExpense.amount || !newExpense.description) return;
-    setTransactions([{
-      id: Date.now(), amount: parseFloat(newExpense.amount),
-      category: newExpense.category, description: newExpense.description,
-      date: newExpense.date, type: 'expense'
-    }, ...transactions]);
+    await addTransaction({
+      amount: parseFloat(newExpense.amount),
+      category: newExpense.category,
+      description: newExpense.description,
+      date: newExpense.date,
+      type: 'expense'
+    });
     setNewExpense({ amount: '', category: 'Food', description: '', date: new Date().toISOString().split('T')[0] });
     setShowAddExpense(false);
   };
 
   const handleAddIncome = () => {
-    if (!newIncome.amount || !newIncome.description) return;
-    setTransactions([{
-      id: Date.now(), amount: parseFloat(newIncome.amount),
-      category: 'Income', description: newIncome.description,
-      date: newIncome.date, type: 'income'
-    }, ...transactions]);
+    if (!newIncome.amount || !newIncome.description) {
+      setIncomeFormError('Amount and description are required.');
+      return;
+    }
+
+    const incomePayload = {
+      amount: parseFloat(newIncome.amount),
+      category: 'Income',
+      description: newIncome.description,
+      date: newIncome.date,
+      type: 'income'
+    };
+
+    setIncomeFormError('');
+    setIsSubmittingIncome(true);
+    setIncomeSyncStatus({ type: 'syncing', message: 'Income added locally. Syncing with Firestore...' });
     setNewIncome({ amount: '', description: '', date: new Date().toISOString().split('T')[0] });
     setShowAddIncome(false);
+    setIsSubmittingIncome(false);
+
+    addTransaction(incomePayload)
+      .then(() => {
+        setIncomeSyncStatus({ type: 'success', message: 'Income synced successfully.' });
+      })
+      .catch(() => {
+        setNewIncome({
+          amount: String(incomePayload.amount),
+          description: incomePayload.description,
+          date: incomePayload.date
+        });
+        setIncomeFormError('Unable to save income right now. Please try again.');
+        setIncomeSyncStatus({ type: 'error', message: 'Income could not sync to Firestore. Please try again.' });
+        setShowAddIncome(true);
+      });
   };
 
-  const handleAddBudget = () => {
+  const handleAddBudget = async () => {
     if (!newBudget.amount) return;
     const resolvedCategory = newBudget.category === 'Other'
       ? (newBudget.customCategory.trim() || 'Other') : newBudget.category;
-    const amount = parseFloat(newBudget.amount);
-    const idx = budgets.findIndex(b => b.category === resolvedCategory);
-    if (idx !== -1) {
-      const list = [...budgets];
-      list[idx] = { ...list[idx], budgeted: amount };
-      setBudgets(list);
-    } else {
-      setBudgets([...budgets, { category: resolvedCategory, budgeted: amount, spent: 0 }]);
-    }
+    await addBudget({ category: resolvedCategory, budgeted: parseFloat(newBudget.amount) });
     setNewBudget({ category: 'Food', customCategory: '', amount: '' });
     setShowAddBudget(false);
   };
 
-  const handleAddGoal = () => {
+  const handleAddGoal = async () => {
     if (!newGoal.name || !newGoal.target || !newGoal.deadline) return;
-    setGoals([...goals, { id: Date.now(), name: newGoal.name, target: parseFloat(newGoal.target), current: 0, deadline: newGoal.deadline }]);
+    await addGoal({
+      name: newGoal.name,
+      target: parseFloat(newGoal.target),
+      deadline: newGoal.deadline
+    });
     setNewGoal({ name: '', target: '', deadline: '' });
     setShowAddGoal(false);
   };
 
-  const handleContributeToGoal = () => {
+  const handleContributeToGoal = async () => {
     if (!goalContribution.amount || !selectedGoal) return;
     const amount = parseFloat(goalContribution.amount);
-    setGoals(goals.map(g => g.id === selectedGoal.id
-      ? { ...g, current: Math.min(g.current + amount, g.target) } : g));
+    await contributeToGoal(
+      selectedGoal.id,
+      selectedGoal.name,
+      amount,
+      selectedGoal.current,
+      selectedGoal.target,
+      new Date().toISOString().split('T')[0]
+    );
     setGoalContribution({ amount: '' });
     setShowContributeGoal(false);
     setSelectedGoal(null);
@@ -264,7 +324,6 @@ function PersonalFinanceTracker() {
     const needs   = income * 0.50;
     const wants   = income * 0.30;
     const savings = income * 0.20;
-    const avgExpenses = totalExpenses / Math.max(transactions.filter(t => t.type === 'expense').length, 1);
     setAiResult({
       type: 'budget',
       needs, wants, savings,
@@ -311,22 +370,35 @@ function PersonalFinanceTracker() {
     if (balance < 0) tips.push({ icon: '⚠️', text: 'Your expenses exceed income this period. Review your biggest spending categories.' });
     if (goals.some(g => new Date(g.deadline) < new Date() && g.current < g.target))
       tips.push({ icon: '📅', text: 'Some goals have passed their deadline. Consider updating target dates or contributions.' });
-    if (totalIncome > 0 && (totalExpenses / totalIncome) > 0.9)
+    if (totalIncome > 0 && ((totalExpenses + totalSavings) / totalIncome) > 0.9)
       tips.push({ icon: '💰', text: 'You\'re spending over 90% of your income. Aim to save at least 10–20%.' });
     if (tips.length === 0)
       tips.push({ icon: '✅', text: 'Everything looks healthy! Keep up the great financial habits.' });
     return tips;
-  }, [updatedBudgets, balance, goals, totalIncome, totalExpenses]);
+  }, [updatedBudgets, balance, goals, totalIncome, totalExpenses, totalSavings]);
 
   // ── Render ─────────────────────────────────────────────────────────────
   return (
     <div className="app-container">
+      {incomeSyncStatus && (
+        <div className={`sync-banner sync-banner-${incomeSyncStatus.type}`}>
+          {incomeSyncStatus.message}
+        </div>
+      )}
       {/* Header */}
       <header className="header">
         <div className="header-content">
           <h1 className="header-title"><span className="brand-wealth">Wealth</span><span className="brand-flow">Flow</span></h1>
           <div className="header-buttons">
-            <button onClick={() => setShowAddIncome(true)} className="btn-success">
+            <button onClick={handleOpenProfile} className="btn-secondary">
+              <User size={16} /><span>{userProfile?.displayName || userProfile?.username || 'Profile'}</span>
+            </button>
+            {!premium && (
+              <button onClick={handleOpenUpgrade} className="btn-premium">
+                <Crown size={16} /><span>{isTrialPlan ? `Trial: ${trialDays}d left` : 'Go Premium'}</span>
+              </button>
+            )}
+            <button onClick={() => { setIncomeFormError(''); setShowAddIncome(true); }} className="btn-success">
               <PlusCircle size={16} /><span>Add Income</span>
             </button>
             <button onClick={() => setShowAddExpense(true)} className="btn-primary">
@@ -344,7 +416,7 @@ function PersonalFinanceTracker() {
             { id: 'transactions', icon: <DollarSign size={16} />, label: 'Transactions'  },
             { id: 'budgets',      icon: <PieChart size={16} />,   label: 'Budgets'       },
             { id: 'goals',        icon: <Target size={16} />,     label: 'Goals'         },
-            { id: 'ai',           icon: <Bot size={16} />,        label: 'AI Advisor'    },
+            { id: 'ai',           icon: premium ? <Bot size={16} /> : <Lock size={16} />, label: 'AI Advisor'    },
           ].map(t => (
             <button key={t.id} onClick={() => setActiveTab(t.id)}
               className={`nav-item ${activeTab === t.id ? 'active' : ''}`}>
@@ -354,13 +426,31 @@ function PersonalFinanceTracker() {
         </div>
       </nav>
 
+      <div className={`account-status-bar ${premium ? 'premium' : 'free'}`}>
+        <div className="account-status-copy">
+          <span className="account-status-pill">{premium ? 'Premium Access' : 'Free Plan'}</span>
+          <span>
+            {premium
+              ? isTrialPlan
+                ? `7-day trial active with ${trialDays} day${trialDays !== 1 ? 's' : ''} remaining`
+                : 'Premium financial tools, analytics, and sync are active'
+              : 'Basic budgeting is active. Upgrade to unlock AI advisor, smart insights, and advanced analytics.'}
+          </span>
+        </div>
+        {!premium && (
+          <button onClick={handleOpenUpgrade} className="account-status-btn">
+            <Crown size={15} /><span>View Premium</span>
+          </button>
+        )}
+      </div>
+
       <main className="main-content">
 
         {/* ── Dashboard ──────────────────────────────────────────────── */}
         {activeTab === 'dashboard' && (
           <div className="dashboard">
             {/* Spending Insights Banner */}
-            {insightBudgets.length > 0 && (
+            {premium && insightBudgets.length > 0 && (
               <div className="insights-banner">
                 <div className="insights-header">
                   <AlertTriangle size={18} className="insights-icon" />
@@ -397,10 +487,17 @@ function PersonalFinanceTracker() {
                     </div>
                     {card.icon}
                   </div>
-                  <div className="summary-card-chart">
-                    <MiniChart data={card.data} color={card.color} />
-                    <span className="chart-label">Last 6 months</span>
-                  </div>
+                  {premium ? (
+                    <div className="summary-card-chart">
+                      <MiniChart data={card.data} color={card.color} />
+                      <span className="chart-label">Last 6 months</span>
+                    </div>
+                  ) : (
+                    <div className="summary-card-lock">
+                      <Lock size={14} />
+                      <span>Premium unlocks spending trends and advanced analytics.</span>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -408,6 +505,9 @@ function PersonalFinanceTracker() {
             {/* Expense Categories */}
             <div className="card">
               <h3 className="card-title">Spending by Category</h3>
+              {Object.keys(expensesByCategory).length === 0 && (
+                <p className="empty-state-subtitle">No recent spending available, Add expenses to view</p>
+              )}
               <div className="category-grid">
                 {Object.entries(expensesByCategory).map(([cat, amt]) => (
                   <div key={cat} className="category-card">
@@ -424,6 +524,9 @@ function PersonalFinanceTracker() {
             {/* Recent Transactions */}
             <div className="card">
               <h3 className="card-title">Recent Transactions</h3>
+              {transactions.length === 0 && (
+                <p className="empty-state-subtitle">No recent transactions available, Add expenses or income to view</p>
+              )}
               <div className="transaction-list">
                 {transactions.slice(0, 5).map(t => (
                   <div key={t.id} className="transaction-item">
@@ -431,8 +534,8 @@ function PersonalFinanceTracker() {
                       <p className="transaction-description">{t.description}</p>
                       <p className="transaction-meta">{t.category} • {t.date}</p>
                     </div>
-                    <p className={`transaction-amount ${t.type === 'income' ? 'positive' : 'negative'}`}>
-                      {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                    <p className={`transaction-amount ${getTransactionTone(t.type)}`}>
+                      {getTransactionPrefix(t.type)}${t.amount.toFixed(2)}
                     </p>
                   </div>
                 ))}
@@ -450,6 +553,7 @@ function PersonalFinanceTracker() {
                 <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className="filter-select">
                   <option value="all">All Categories</option>
                   <option value="Income">Income</option>
+                  <option value="Savings">Savings</option>
                   {categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
                 <div className="date-filter-wrapper">
@@ -479,8 +583,8 @@ function PersonalFinanceTracker() {
                       <td>{t.date}</td>
                       <td>{t.description}</td>
                       <td>{t.category}</td>
-                      <td className={t.type === 'income' ? 'positive' : 'negative'}>
-                        {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                      <td className={getTransactionTone(t.type)}>
+                        {getTransactionPrefix(t.type)}${t.amount.toFixed(2)}
                       </td>
                     </tr>
                   ))}
@@ -522,6 +626,9 @@ function PersonalFinanceTracker() {
             </div>
 
             <div className="budget-grid">
+              {updatedBudgets.length === 0 && (
+                <p className="empty-state-subtitle">No recent budgets available. Add budget to view</p>
+              )}
               {updatedBudgets.map(budget => {
                 const percentage  = (budget.spent / budget.budgeted) * 100;
                 const isOverBudget = percentage > 100;
@@ -571,6 +678,9 @@ function PersonalFinanceTracker() {
               </button>
             </div>
             <div className="goals-grid">
+              {goals.length === 0 && (
+                <p className="empty-state-subtitle">No recent goals available. Add goals to view</p>
+              )}
               {goals.map(goal => {
                 const pct = (goal.current / goal.target) * 100;
                 const isCompleted = goal.current >= goal.target;
@@ -616,7 +726,29 @@ function PersonalFinanceTracker() {
                 <p className="ai-subtitle">Personalised insights powered by your financial data</p>
               </div>
             </div>
-
+            {!premium ? (
+              <div className="premium-lock-panel">
+                <div className="premium-lock-icon">
+                  <Crown size={34} />
+                </div>
+                <h3>Premium unlocks the AI financial advisor</h3>
+                <p>
+                  Free accounts keep the essentials. Upgrade to get personalised tips, budget planning,
+                  smart insights, debt payoff guidance, spending trends, and cloud sync across devices.
+                </p>
+                <div className="premium-lock-list">
+                  {premiumFeatureList.map((feature) => (
+                    <div key={feature} className="premium-lock-item">
+                      <CheckCircle size={15} />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+                <button className="btn-premium-hero" onClick={handleOpenUpgrade}>
+                  <Crown size={16} /><span>{isTrialPlan ? 'Continue Premium Trial' : 'Start 7-Day Trial'}</span>
+                </button>
+              </div>
+            ) : (
             <div className="ai-layout">
               {/* Sidebar tools */}
               <div className="ai-sidebar">
@@ -657,7 +789,7 @@ function PersonalFinanceTracker() {
                         <div className="snapshot-item">
                           <span className="snapshot-label">Savings Rate</span>
                           <span className="snapshot-val positive">
-                            {totalIncome > 0 ? `${(((totalIncome - totalExpenses) / totalIncome) * 100).toFixed(1)}%` : '—'}
+                            {totalIncome > 0 ? `${((totalSavings / totalIncome) * 100).toFixed(1)}%` : '—'}
                           </span>
                         </div>
                         <div className="snapshot-item">
@@ -787,6 +919,7 @@ function PersonalFinanceTracker() {
 
               </div>
             </div>
+            )}
           </div>
         )}
       </main>
@@ -802,6 +935,7 @@ function PersonalFinanceTracker() {
                 <span className="ep-label">Summary</span>
                 <div className="ep-row"><span>Total Income</span><span className="positive">${totalIncome.toFixed(2)}</span></div>
                 <div className="ep-row"><span>Total Expenses</span><span className="negative">${totalExpenses.toFixed(2)}</span></div>
+                <div className="ep-row"><span>Total Savings</span><span className="saving">${totalSavings.toFixed(2)}</span></div>
                 <div className="ep-row"><span>Balance</span><span className={balance >= 0 ? 'positive' : 'negative'}>${balance.toFixed(2)}</span></div>
               </div>
               <div className="export-preview-section">
@@ -809,8 +943,8 @@ function PersonalFinanceTracker() {
                 {transactions.slice(0, 4).map(t => (
                   <div key={t.id} className="ep-row">
                     <span>{t.date} — {t.description}</span>
-                    <span className={t.type === 'income' ? 'positive' : 'negative'}>
-                      {t.type === 'income' ? '+' : '-'}${t.amount.toFixed(2)}
+                    <span className={getTransactionTone(t.type)}>
+                      {getTransactionPrefix(t.type)}${t.amount.toFixed(2)}
                     </span>
                   </div>
                 ))}
@@ -894,23 +1028,32 @@ function PersonalFinanceTracker() {
 
       {/* ── Add Income Modal ─────────────────────────────────────────── */}
       {showAddIncome && (
-        <div className="modal-overlay" onClick={() => setShowAddIncome(false)}>
+        <div className="modal-overlay" onClick={() => { setIncomeFormError(''); setShowAddIncome(false); }}>
           <div className="modal" onClick={e => e.stopPropagation()}>
             <h3 className="modal-title">Add Income</h3>
             <div className="form-group"><label>Amount *</label>
               <input type="number" step="0.01" value={newIncome.amount}
-                onChange={e => setNewIncome({ ...newIncome, amount: e.target.value })}
+                onChange={e => {
+                  setIncomeFormError('');
+                  setNewIncome({ ...newIncome, amount: e.target.value });
+                }}
                 className="form-input" placeholder="0.00" /></div>
             <div className="form-group"><label>Description *</label>
               <input type="text" value={newIncome.description}
-                onChange={e => setNewIncome({ ...newIncome, description: e.target.value })}
+                onChange={e => {
+                  setIncomeFormError('');
+                  setNewIncome({ ...newIncome, description: e.target.value });
+                }}
                 className="form-input" placeholder="e.g., Salary, Freelance work, Gift" /></div>
             <div className="form-group"><label>Date *</label>
               <input type="date" value={newIncome.date}
                 onChange={e => setNewIncome({ ...newIncome, date: e.target.value })} className="form-input" /></div>
+            {incomeFormError && <p className="form-error">{incomeFormError}</p>}
             <div className="modal-actions">
-              <button onClick={handleAddIncome} className="btn-success">Add Income</button>
-              <button onClick={() => setShowAddIncome(false)} className="btn-secondary">Cancel</button>
+              <button onClick={handleAddIncome} className="btn-success" disabled={isSubmittingIncome}>
+                {isSubmittingIncome ? 'Saving...' : 'Add Income'}
+              </button>
+              <button onClick={() => { setIncomeFormError(''); setShowAddIncome(false); }} className="btn-secondary" disabled={isSubmittingIncome}>Cancel</button>
             </div>
           </div>
         </div>

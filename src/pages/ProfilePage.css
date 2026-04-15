@@ -30,6 +30,24 @@
   gap: 1.5rem;
 }
 
+.profile-back-btn {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.45rem 0.8rem;
+  border: none;
+  border-radius: 999px;
+  background: white;
+  color: #374151;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.06);
+  cursor: pointer;
+}
+
+.profile-back-btn:hover {
+  color: #111827;
+}
+
 .profile-heading {
   font-size: 1.75rem;
   font-weight: 700;
@@ -71,6 +89,40 @@
 .hidden-file { display: none; }
 .avatar-name  { font-size: 1.1rem; font-weight: 700; color: #111827; }
 .avatar-email { font-size: 0.875rem; color: #6b7280; margin-top: 0.2rem; }
+.avatar-plan-row {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-top: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.plan-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.plan-chip.premium { background: #fff7ed; color: #c2410c; border: 1px solid #fdba74; }
+.plan-chip.free { background: #eff6ff; color: #1d4ed8; border: 1px solid #bfdbfe; }
+
+.avatar-upgrade-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.45rem 0.8rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  cursor: pointer;
+}
 
 /* Form */
 .profile-form {
@@ -80,6 +132,21 @@
   padding: 1.5rem;
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+.profile-form-head {
+  margin-bottom: 1rem;
+}
+
+.profile-form-head h3 {
+  font-size: 1rem;
+  color: #111827;
+  margin-bottom: 0.25rem;
+}
+
+.profile-form-head p {
+  font-size: 0.85rem;
+  color: #6b7280;
+}
+
 .profile-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -127,6 +194,13 @@
   font-size: 1rem; font-weight: 700; color: #111827;
   margin-bottom: 1rem;
 }
+.section-subcopy {
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  margin-top: -0.15rem;
+  margin-bottom: 1rem;
+}
 .security-row {
   display: flex; justify-content: space-between; align-items: center;
   padding: 0.75rem 0;
@@ -147,6 +221,19 @@
   transition: all 0.15s;
 }
 .btn-outline:hover { border-color: #2563eb; color: #2563eb; }
+
+.security-info-banner {
+  margin-top: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  border-radius: 0.65rem;
+  padding: 0.75rem 0.9rem;
+  font-size: 0.82rem;
+}
 
 .revealed-pw {
   display: flex; align-items: center; gap: 0.5rem;

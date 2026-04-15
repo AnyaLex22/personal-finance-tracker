@@ -7,7 +7,7 @@ import { getStorage } from 'firebase/storage';
 //WealthFlow's Firebase Configuration
 const firebaseConfig = {
     apiKey: "AIzaSyAc9W9cLtNdZidvJ6Sju3ubEoBXEIS9Zds",
-    authDomain: "[wealthflow-12839.firebaseapp.com](http://wealthflow-12839.firebaseapp.com/)",
+    authDomain: "wealthflow-12839.firebaseapp.com",
     projectId: "wealthflow-12839",
     storageBucket: "wealthflow-12839.firebasestorage.app",
     messagingSenderId: "577437120382",

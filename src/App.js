@@ -1,12 +1,13 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider, useAuth } from './src/context/AuthContext';
+import { AuthProvider, useAuth } from './context/AuthContext';
 import { FinanceProvider } from './context/FinanceContext';
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import ProfilePage from './pages/ProfilePage';
 import UpgradePage from './pages/UpgradePage';
+import PlanPreviewPage from './pages/PlanPreviewPage';
 import PersonalFinanceTracker from './PersonalFinanceTracker';
 import './App.css';
 
@@ -43,6 +44,13 @@ function AppRoutes() {
       <Route path="/upgrade" element={
         <PrivateRoute>
           <UpgradePage />
+        </PrivateRoute>
+      } />
+      <Route path="/plan-preview" element={
+        <PrivateRoute>
+          <FinanceProvider>
+            <PlanPreviewPage />
+          </FinanceProvider>
         </PrivateRoute>
       } />
       <Route path="*" element={<Navigate to="/" replace />} />

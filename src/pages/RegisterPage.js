@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, TrendingUp, CheckCircle } from 'lucide-react';
 import './AuthPages.css';
 
@@ -38,6 +38,8 @@ export default function RegisterPage() {
       setDone(true);
     } catch (err) {
       if (err.code === 'auth/email-already-in-use') setError('This email is already registered.');
+      else if (err.code === 'auth/username-already-in-use') setError('That username is already taken.');
+      else if (err.code === 'auth/missing-username') setError('Please choose a username.');
       else setError('Registration failed. Please try again.');
       setLoading(false);
     }

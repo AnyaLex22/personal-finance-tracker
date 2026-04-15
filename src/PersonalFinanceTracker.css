@@ -11,6 +11,34 @@
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
 }
 
+.sync-banner {
+  position: sticky;
+  top: 0;
+  z-index: 60;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.sync-banner-syncing {
+  background: #eff6ff;
+  color: #1d4ed8;
+  border-bottom: 1px solid #bfdbfe;
+}
+
+.sync-banner-success {
+  background: #ecfdf5;
+  color: #047857;
+  border-bottom: 1px solid #a7f3d0;
+}
+
+.sync-banner-error {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-bottom: 1px solid #fecaca;
+}
+
 /* Header */
 .header {
   background-color: white;
@@ -38,6 +66,7 @@
   display: flex;
   gap: 0.75rem;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 /* Buttons */
@@ -98,6 +127,24 @@
   background-color: #047857;
 }
 
+.btn-premium {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-premium:hover {
+  opacity: 0.92;
+}
+
 /* Navigation */
 .navigation {
   background-color: white;
@@ -143,6 +190,62 @@
   padding: 2rem;
 }
 
+.account-status-bar {
+  max-width: 1280px;
+  margin: 1rem auto 0;
+  padding: 0.95rem 1.25rem;
+  border-radius: 0.9rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.account-status-bar.free {
+  background: linear-gradient(135deg, #eff6ff, #f8fafc);
+  border: 1px solid #bfdbfe;
+  color: #1e3a8a;
+}
+
+.account-status-bar.premium {
+  background: linear-gradient(135deg, #fff7ed, #fffbeb);
+  border: 1px solid #fcd34d;
+  color: #92400e;
+}
+
+.account-status-copy {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  flex-wrap: wrap;
+  font-size: 0.92rem;
+}
+
+.account-status-pill {
+  padding: 0.3rem 0.65rem;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.75);
+  font-weight: 700;
+}
+
+.account-status-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.55rem 0.85rem;
+  border: none;
+  border-radius: 0.7rem;
+  background: #1d4ed8;
+  color: white;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.account-status-btn:hover {
+  background: #1e40af;
+}
+
 /* Dashboard */
 .dashboard {
   display: flex;
@@ -161,6 +264,17 @@
   padding: 1.5rem;
   border-radius: 0.5rem;
   box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+}
+
+.summary-card-lock {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-top: 0.9rem;
+  padding-top: 0.9rem;
+  border-top: 1px solid #f3f4f6;
+  color: #6b7280;
+  font-size: 0.78rem;
 }
 
 .summary-card-content {
@@ -213,6 +327,12 @@
   font-weight: 600;
   margin-bottom: 1rem;
   color: #111827;
+}
+
+.empty-state-subtitle {
+  font-size: 0.875rem;
+  color: #6b7280;
+  margin-bottom: 1rem;
 }
 
 /* Category Grid */
@@ -306,6 +426,10 @@
   color: #dc2626;
 }
 
+.transaction-amount.saving {
+  color: #d97706;
+}
+
 /* Transactions Page */
 .transactions-page {
   display: flex;
@@ -388,6 +512,11 @@
 
 .transaction-table td.negative {
   color: #dc2626;
+  font-weight: 600;
+}
+
+.transaction-table td.saving {
+  color: #d97706;
   font-weight: 600;
 }
 
@@ -644,11 +773,22 @@
   flex: 1;
 }
 
+.modal-actions button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .form-hint {
   font-size: 0.75rem;
   color: #6b7280;
   margin-top: 0.25rem;
   font-style: italic;
+}
+
+.form-error {
+  font-size: 0.875rem;
+  color: #dc2626;
+  margin-top: 0.75rem;
 }
 
 /* Mini Chart in Summary Cards */
@@ -737,6 +877,10 @@
 
 .negative {
   color: #dc2626;
+}
+
+.saving {
+  color: #d97706;
 }
 
 /* ── WealthFlow Branding ───────────────────────────────────────────────── */
@@ -870,6 +1014,81 @@
   grid-template-columns: 220px 1fr;
   gap: 1.25rem;
   align-items: start;
+}
+
+.premium-lock-panel {
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid #fcd34d;
+  border-radius: 1.2rem;
+  padding: 2rem;
+  box-shadow: 0 12px 32px rgba(217, 119, 6, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.premium-lock-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+}
+
+.premium-lock-panel h3 {
+  font-size: 1.35rem;
+  color: #111827;
+}
+
+.premium-lock-panel p {
+  color: #6b7280;
+  line-height: 1.7;
+  max-width: 680px;
+}
+
+.premium-lock-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 0.75rem;
+}
+
+.premium-lock-item {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.85rem 1rem;
+  border-radius: 0.9rem;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid #fde68a;
+  color: #374151;
+  font-size: 0.88rem;
+}
+
+.premium-lock-item svg {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.btn-premium-hero {
+  width: fit-content;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.8rem 1.15rem;
+  border: none;
+  border-radius: 0.85rem;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: white;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-premium-hero:hover {
+  opacity: 0.92;
 }
 
 .ai-sidebar {
@@ -1048,6 +1267,13 @@
   .main-content {
     padding-left: 1rem;
     padding-right: 1rem;
+  }
+
+  .account-status-bar {
+    margin-left: 1rem;
+    margin-right: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .summary-grid,

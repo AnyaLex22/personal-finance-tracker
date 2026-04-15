@@ -100,6 +100,22 @@
 .btn-upgrade:hover:not(:disabled) { opacity: 0.9; }
 .btn-upgrade:disabled { opacity: 0.6; cursor: not-allowed; }
 
+.btn-outline-premium {
+  width: 100%;
+  padding: 0.75rem;
+  background: white;
+  color: #b45309;
+  border: 1px solid #f59e0b;
+  border-radius: 0.75rem;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.btn-outline-premium:hover {
+  background: #fffbeb;
+}
+
 .plan-current-badge {
   text-align: center;
   font-size: 0.8rem;
@@ -144,7 +160,38 @@
 
 .auth-error { background: #fef2f2; border: 1px solid #fecaca; color: #dc2626; padding: 0.65rem; border-radius: 0.5rem; font-size: 0.875rem; }
 
+.upgrade-manage-card {
+  width: 100%;
+  max-width: 800px;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 1rem;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.upgrade-manage-card h3 {
+  color: #111827;
+  font-size: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.upgrade-manage-card p {
+  color: #6b7280;
+  font-size: 0.88rem;
+  line-height: 1.6;
+}
+
+.btn-outline-dark.danger {
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
 @media (max-width: 600px) {
   .upgrade-plans { grid-template-columns: 1fr; }
   .billing-row { grid-template-columns: 1fr; }
+  .upgrade-manage-card { flex-direction: column; align-items: flex-start; }
 }

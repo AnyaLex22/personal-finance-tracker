@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { Eye, EyeOff, TrendingUp } from 'lucide-react';
 import './AuthPages.css';
 
 export default function LoginPage() {
   const { login } = useAuth();
   const navigate = useNavigate();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState('');
@@ -18,7 +18,7 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
     try {
-      const cred = await login(email, password);
+      const cred = await login(username, password);
       if (!cred.user.emailVerified) {
         setError('Please verify your email before logging in. Check your inbox.');
         await cred.user.auth.signOut();
@@ -27,8 +27,14 @@ export default function LoginPage() {
       }
       navigate('/');
     } catch (err) {
-      if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password' || err.code === 'auth/user-not-found') {
-        setError('Invalid email or password.');
+      if (
+        err.code === 'auth/invalid-credential' ||
+        err.code === 'auth/wrong-password' ||
+        err.code === 'auth/user-not-found'
+      ) {
+        setError('Invalid username or password.');
+      } else if (err.code === 'firestore/offline') {
+        setError('Username lookup is unavailable while offline. Reconnect and try again.');
       } else {
         setError('Failed to sign in. Please try again.');
       }
@@ -50,8 +56,8 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="auth-form">
           <div className="auth-field">
-            <label>Email address</label>
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="you@example.com" />
+            <label>Username</label>
+            <input type="text" value={username} onChange={e => setUsername(e.target.value)} required placeholder="johndoe" />
           </div>
           <div className="auth-field">
             <label>Password</label>

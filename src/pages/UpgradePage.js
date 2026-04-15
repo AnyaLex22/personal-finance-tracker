@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useAuth } from '../src/context/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Crown, CheckCircle, X, CreditCard, Lock, ArrowLeft } from 'lucide-react';
 import './UpgradePage.css';
 
 const PREMIUM_FEATURES = [
   'AI Financial Advisor (all tools)',
-  'Advanced spending insights & trend analytics',
+  'Advanced spending insights and trend analytics',
   'Smart budget risk alerts',
   'Personalised financial tips',
   '50/30/20 Budget Planner',
@@ -27,42 +27,78 @@ const FREE_FEATURES = [
 export default function UpgradePage() {
   const { userProfile, updateUserProfile, currentUser, isPremium, getTrialDaysLeft } = useAuth();
   const navigate = useNavigate();
-  const [showTrialForm, setShowTrialForm] = useState(false);
+  const [billingMode, setBillingMode] = useState(null);
   const [card, setCard] = useState({ name: '', number: '', expiry: '', cvv: '' });
   const [processing, setProcessing] = useState(false);
-  const [trialStarted, setTrialStarted] = useState(false);
+  const [activationMessage, setActivationMessage] = useState('');
   const [error, setError] = useState('');
 
-  const set = (k) => (e) => setCard(c => ({ ...c, [k]: e.target.value }));
+  const set = (key) => (event) => setCard((current) => ({ ...current, [key]: event.target.value }));
+  const premium = isPremium();
+  const trialDays = getTrialDaysLeft();
 
-  const handleStartTrial = async (e) => {
-    e.preventDefault();
+  const openBillingForm = (mode) => {
     setError('');
-    if (!card.name || !card.number || !card.expiry || !card.cvv) {
-      setError('Please fill in all card details.'); return;
-    }
-    setProcessing(true);
-    // Simulate — real Stripe integration connects here
-    await new Promise(r => setTimeout(r, 1500));
-    const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-    await updateUserProfile(currentUser.uid, { plan: 'trial', trialEndsAt: trialEnd });
-    setProcessing(false);
-    setTrialStarted(true);
+    setBillingMode(mode);
   };
 
-  const trialDays = getTrialDaysLeft();
-  const premium   = isPremium();
+  const closeBillingForm = () => {
+    setBillingMode(null);
+    setError('');
+  };
 
-  if (trialStarted) return (
-    <div className="upgrade-container">
-      <div className="upgrade-success">
-        <Crown size={56} className="upgrade-crown" />
-        <h2>Premium Trial Activated!</h2>
-        <p>You have 7 days of full Premium access. Enjoy!</p>
-        <button className="btn-upgrade" onClick={() => navigate('/')}>Start Exploring</button>
+  const handleActivatePlan = async (event) => {
+    event.preventDefault();
+    setError('');
+
+    if (!card.name || !card.number || !card.expiry || !card.cvv) {
+      setError('Please fill in all card details.');
+      return;
+    }
+
+    setProcessing(true);
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+
+    if (billingMode === 'trial') {
+      const trialEnd = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+      await updateUserProfile(currentUser.uid, {
+        plan: 'trial',
+        trialEndsAt: trialEnd,
+        billingPreview: `•••• ${card.number.slice(-4)}`
+      });
+      setActivationMessage('Premium trial activated. You now have 7 days of full access.');
+    } else {
+      await updateUserProfile(currentUser.uid, {
+        plan: 'premium',
+        trialEndsAt: null,
+        billingPreview: `•••• ${card.number.slice(-4)}`
+      });
+      setActivationMessage('Premium subscription activated at RM 25/month.');
+    }
+
+    setProcessing(false);
+    setBillingMode(null);
+  };
+
+  const handleCancelPlan = async () => {
+    setProcessing(true);
+    await updateUserProfile(currentUser.uid, { plan: 'free', trialEndsAt: null });
+    setProcessing(false);
+    setActivationMessage('Your plan was moved back to Free. Premium features are now locked.');
+  };
+
+  if (activationMessage) {
+    return (
+      <div className="upgrade-container">
+        <div className="upgrade-success">
+          <Crown size={56} className="upgrade-crown" />
+          <h2>Plan Updated</h2>
+          <p>{activationMessage}</p>
+          <button className="btn-upgrade" onClick={() => navigate('/')}>Start Exploring</button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  }
 
   return (
     <div className="upgrade-container">
@@ -73,37 +109,35 @@ export default function UpgradePage() {
       <div className="upgrade-hero">
         <Crown size={40} className="upgrade-crown" />
         <h2>Upgrade to WealthFlow Premium</h2>
-        <p>Unlock AI-powered tools and advanced analytics to take full control of your finances</p>
+        <p>Unlock AI-powered tools, advanced analytics, smart insights, and sync across all your devices.</p>
       </div>
 
       {premium && (
         <div className="upgrade-active-banner">
           {userProfile?.plan === 'trial'
-            ? `🎉 Trial active — ${trialDays} day${trialDays !== 1 ? 's' : ''} remaining`
-            : '✨ You are on the Premium plan'}
+            ? `Premium trial active with ${trialDays} day${trialDays !== 1 ? 's' : ''} remaining`
+            : 'You are on the Premium plan'}
         </div>
       )}
 
       <div className="upgrade-plans">
-        {/* Free Plan */}
         <div className="plan-card free-card">
           <div className="plan-header">
             <h3>Free</h3>
             <div className="plan-price">RM 0<span>/month</span></div>
           </div>
           <ul className="plan-features">
-            {FREE_FEATURES.map(f => (
-              <li key={f}><CheckCircle size={15} className="feat-check" />{f}</li>
+            {FREE_FEATURES.map((feature) => (
+              <li key={feature}><CheckCircle size={15} className="feat-check" />{feature}</li>
             ))}
-            {PREMIUM_FEATURES.slice(0, 3).map(f => (
-              <li key={f} className="feat-locked"><X size={15} className="feat-x" />{f}</li>
+            {PREMIUM_FEATURES.slice(0, 3).map((feature) => (
+              <li key={feature} className="feat-locked"><X size={15} className="feat-x" />{feature}</li>
             ))}
-            <li className="feat-locked"><X size={15} className="feat-x" />…and more</li>
+            <li className="feat-locked"><X size={15} className="feat-x" />and more</li>
           </ul>
           {!premium && <div className="plan-current-badge">Current Plan</div>}
         </div>
 
-        {/* Premium Plan */}
         <div className="plan-card premium-card">
           <div className="plan-badge"><Crown size={12} /> Most Popular</div>
           <div className="plan-header">
@@ -111,46 +145,73 @@ export default function UpgradePage() {
             <div className="plan-price">RM 25<span>/month</span></div>
           </div>
           <ul className="plan-features">
-            {FREE_FEATURES.map(f => (
-              <li key={f}><CheckCircle size={15} className="feat-check" />{f}</li>
+            {FREE_FEATURES.map((feature) => (
+              <li key={feature}><CheckCircle size={15} className="feat-check" />{feature}</li>
             ))}
-            {PREMIUM_FEATURES.map(f => (
-              <li key={f}><CheckCircle size={15} className="feat-check gold" />{f}</li>
+            {PREMIUM_FEATURES.map((feature) => (
+              <li key={feature}><CheckCircle size={15} className="feat-check gold" />{feature}</li>
             ))}
           </ul>
-          {premium
-            ? <div className="plan-current-badge gold-badge">Active Plan</div>
-            : (
-              <button className="btn-upgrade" onClick={() => setShowTrialForm(true)}>
+          {premium ? (
+            <div className="plan-current-badge gold-badge">Active Plan</div>
+          ) : (
+            <>
+              <button className="btn-upgrade" onClick={() => openBillingForm('premium')}>
+                Subscribe Now
+              </button>
+              <button className="btn-outline-premium" onClick={() => openBillingForm('premium')}>
+                Pay RM 25/month
+              </button>
+              <button className="btn-outline-premium trial" onClick={() => openBillingForm('trial')}>
                 Start 7-Day Free Trial
               </button>
-            )}
-          <p className="plan-trial-note">No charge during trial. Cancel anytime.</p>
+            </>
+          )}
+          <p className="plan-trial-note">Bank details are collected now. Stripe billing is ready to connect next.</p>
         </div>
       </div>
 
-      {/* Trial/billing form */}
-      {showTrialForm && !premium && (
-        <div className="modal-overlay" onClick={() => setShowTrialForm(false)}>
-          <div className="upgrade-form-card" onClick={e => e.stopPropagation()}>
+      {premium && (
+        <div className="upgrade-manage-card">
+          <div>
+            <h3>Manage Your Plan</h3>
+            <p>
+              {userProfile?.plan === 'trial'
+                ? `Trialing on ${userProfile?.billingPreview || 'saved card'}. Cancel before the trial ends to avoid charges.`
+                : `Premium is active on ${userProfile?.billingPreview || 'saved card'}. Cancel anytime and your account returns to Free.`}
+            </p>
+          </div>
+          <button className="btn-outline-dark danger" onClick={handleCancelPlan} disabled={processing}>
+            {processing ? 'Updating...' : userProfile?.plan === 'trial' ? 'Cancel Trial' : 'Cancel Subscription'}
+          </button>
+        </div>
+      )}
+
+      {billingMode && !premium && (
+        <div className="modal-overlay" onClick={closeBillingForm}>
+          <div className="upgrade-form-card" onClick={(event) => event.stopPropagation()}>
             <div className="upgrade-form-header">
               <Lock size={18} className="form-lock" />
               <div>
-                <h3>Start your free 7-day trial</h3>
-                <p>Your card won't be charged until the trial ends. Cancel anytime.</p>
+                <h3>{billingMode === 'trial' ? 'Start your free 7-day trial' : 'Subscribe to Premium'}</h3>
+                <p>
+                  {billingMode === 'trial'
+                    ? 'Your card will not be charged until the trial ends. Cancel anytime.'
+                    : 'Activate Premium immediately with your banking details. Cancel anytime.'}
+                </p>
               </div>
             </div>
 
             {error && <div className="auth-error">{error}</div>}
 
-            <form onSubmit={handleStartTrial} className="billing-form">
+            <form onSubmit={handleActivatePlan} className="billing-form">
               <div className="auth-field">
                 <label>Cardholder Name</label>
                 <input value={card.name} onChange={set('name')} placeholder="John Doe" />
               </div>
               <div className="auth-field">
                 <label><CreditCard size={14} /> Card Number</label>
-                <input value={card.number} onChange={set('number')} placeholder="•••• •••• •••• ••••" maxLength={19} />
+                <input value={card.number} onChange={set('number')} placeholder="1234 5678 9012 3456" maxLength={19} />
               </div>
               <div className="billing-row">
                 <div className="auth-field">
@@ -159,15 +220,20 @@ export default function UpgradePage() {
                 </div>
                 <div className="auth-field">
                   <label>CVV</label>
-                  <input value={card.cvv} onChange={set('cvv')} placeholder="•••" maxLength={4} type="password" />
+                  <input value={card.cvv} onChange={set('cvv')} placeholder="123" maxLength={4} type="password" />
                 </div>
               </div>
-              <p className="billing-note"><Lock size={12} /> Secured by Stripe. You'll be billed RM 25/month after the trial. Cancel before the trial ends to avoid charges.</p>
+              <p className="billing-note">
+                <Lock size={12} />
+                {billingMode === 'trial'
+                  ? 'Secured by Stripe. You will be billed RM 25/month after the trial unless you cancel first.'
+                  : 'Secured by Stripe. You will be billed RM 25/month until you cancel.'}
+              </p>
               <div className="modal-actions">
                 <button type="submit" className="btn-upgrade" disabled={processing}>
-                  {processing ? 'Activating…' : 'Activate Free Trial'}
+                  {processing ? 'Activating...' : billingMode === 'trial' ? 'Activate Free Trial' : 'Activate Premium'}
                 </button>
-                <button type="button" className="btn-outline-dark" onClick={() => setShowTrialForm(false)}>Cancel</button>
+                <button type="button" className="btn-outline-dark" onClick={closeBillingForm}>Cancel</button>
               </div>
             </form>
           </div>
